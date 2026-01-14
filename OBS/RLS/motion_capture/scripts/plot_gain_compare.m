@@ -16,151 +16,175 @@ file_gain_list = {
     'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184006.csv', 0.12;
     'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184410.csv', 0.16;
     'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184516.csv', 0.16;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv', 0.16;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv', 0.20;
     'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185645.csv', 0.20;
 };
 
 color_list = lines(size(file_gain_list,1));
-figure('Position', [100, 100, 1600, 600]);
 
-
-% --- 3軸分の差分を計算・保存 ---
-% 注：タイムスタンプは-1と0のみなので、行番号で時刻対応させる
+% --- x軸のみの差分を計算・保存 ---
 % サンプリング周波数: 50Hz
-axes_names = {'X', 'Y', 'Z'};
-drone_fields = {'pos_x', 'pos_y', 'pos_z'};
-all_diff = cell(3, size(file_gain_list,1)); % {軸, ファイル}
-all_time_vec = cell(size(file_gain_list,1), 1); % 時刻ベクトル（0基準）
-all_zero_time = zeros(size(file_gain_list,1), 1); % 0検出時刻
-all_center = zeros(3, size(file_gain_list,1)); % 振動中心
-all_min = inf(1,3);
-all_max = -inf(1,3);
+drone_field = 'pos_x';
+all_diff = cell(size(file_gain_list,1), 1);
+all_time_vec = cell(size(file_gain_list,1), 1);
+all_center = zeros(size(file_gain_list,1), 1);
+all_damping_rate = nan(size(file_gain_list,1), 1);
+all_min = inf;
+all_max = -inf;
 all_time_min = inf;
 all_time_max = -inf;
 
-fs = 50; % サンプリング周波数 50Hz
-dt = 1/fs; % 0.02秒
 
-for axis_idx = 1:3
-    for i = 1:size(file_gain_list,1)
-        csv_file = file_gain_list{i,1};
-        data = readtable(csv_file);
-        
-        % 元のデータは交互に並んでいる：行1,3,5,... = ID1, 行2,4,6,... = ID2
-        drone_rows = data.rigid_body_id == 1;
-        payload_rows = data.rigid_body_id == 2;
-        
-        drone_data = data(drone_rows, :);
-        payload_data = data(payload_rows, :);
-        
-        N = height(drone_data);
-        
-        % 全ての値が0の行を検出（ドローンデータで）
-        zero_mask = (drone_data.pos_x == 0) & (drone_data.pos_y == 0) & (drone_data.pos_z == 0) & ...
-                    (drone_data.quat_x == 0) & (drone_data.quat_y == 0) & (drone_data.quat_z == 0) & (drone_data.quat_w == 0);
-        zero_idx = find(zero_mask, 1, 'first'); % 最初の0行を検出
-        
-        if isempty(zero_idx)
-            zero_idx = 1; % 見つからない場合は1を使用
+fs = 50;
+dt = 1/fs;
+decay_end_time = 15; % 減衰率計算の終了時刻 [秒]
+offset_before_zero = -2; % 0検出点の何秒前をt=0にするか [秒]
+
+for i = 1:size(file_gain_list,1)
+    csv_file = file_gain_list{i,1};
+    data = readtable(csv_file);
+    
+    % 元のデータは交互に並んでいる：行1,3,5,... = ID1, 行2,4,6,... = ID2
+    drone_rows = data.rigid_body_id == 1;
+    payload_rows = data.rigid_body_id == 2;
+    
+    drone_data = data(drone_rows, :);
+    payload_data = data(payload_rows, :);
+    
+    N = height(drone_data);
+    
+    % 全ての値が0の行をCSV全体から検出
+    zero_mask_all = (data.pos_x == 0) & (data.pos_y == 0) & (data.pos_z == 0) & ...
+                   (data.quat_x == 0) & (data.quat_y == 0) & (data.quat_z == 0) & (data.quat_w == 0);
+    zero_idx_all = find(zero_mask_all, 1, 'first');
+    if isempty(zero_idx_all)
+        zero_idx_all = 1;
+    end
+
+    % ドローンデータのt=0インデックスを計算
+    if mod(zero_idx_all,2)==1
+        zero_idx = (zero_idx_all+1)/2;
+    else
+        zero_idx = zero_idx_all/2;
+    end
+    zero_idx = min(max(zero_idx,1),N);
+
+    % 時刻ベクトル：0検出点のoffset_before_zero秒前をt=0にする
+    time_vec = ((0:N-1)' - (zero_idx-1) - round(offset_before_zero/dt)) * dt;
+    
+    drone_val = drone_data.(drone_field);
+    payload_val = payload_data.(drone_field);
+    
+    % 差分計算
+    diff_val = drone_val - payload_val;
+    
+    % t>=0の部分で振動中心（平均値）を計算
+    post_zero_mask = time_vec >= 0;
+    if sum(post_zero_mask) > 0
+        center_val = mean(diff_val(post_zero_mask));
+    else
+        center_val = mean(diff_val);
+    end
+    
+    all_diff{i} = diff_val;
+    all_time_vec{i} = time_vec;
+    all_center(i) = center_val;
+    all_min = min(all_min, min(diff_val));
+    all_max = max(all_max, max(diff_val));
+    all_time_min = min(all_time_min, min(time_vec));
+    all_time_max = max(all_time_max, max(time_vec));
+    
+    % t=0からdecay_end_timeまでの区間で減衰率計算
+    decay_mask = (time_vec >= 0) & (time_vec <= decay_end_time);
+    if sum(decay_mask) > 10
+        time_decay = time_vec(decay_mask);
+        diff_decay = diff_val(decay_mask);
+        [pks, locs] = findpeaks(abs(diff_decay - center_val), 'MinPeakProminence', 0.005);
+        if length(pks) >= 2
+            log_pks = log(pks);
+            peak_times = time_decay(locs);
+            p = polyfit(peak_times, log_pks, 1);
+            all_damping_rate(i) = -p(1);
         end
-        
-        % 時刻ベクトル：0行を基準(t=0)にする
-        time_vec = ((0:N-1)' - (zero_idx-1)) * dt;
-        
-        drone_val = drone_data.(drone_fields{axis_idx});
-        payload_val = payload_data.(drone_fields{axis_idx});
-        
-        % 行番号順で直接対応（タイムスタンプではなく）
-        diff_val = drone_val - payload_val;
-        
-        % t>=0の部分で振動中心（平均値）を計算
-        post_zero_mask = time_vec >= 0;
-        if sum(post_zero_mask) > 0
-            center_val = mean(diff_val(post_zero_mask));
-        else
-            center_val = mean(diff_val);
-        end
-        
-        all_diff{axis_idx, i} = diff_val;
-        all_time_vec{i} = time_vec;
-        all_zero_time(i) = 0; % 常に0
-        all_center(axis_idx, i) = center_val;
-        all_min(axis_idx) = min(all_min(axis_idx), min(diff_val));
-        all_max(axis_idx) = max(all_max(axis_idx), max(diff_val));
-        all_time_min = min(all_time_min, min(time_vec));
-        all_time_max = max(all_time_max, max(time_vec));
     end
 end
 
+% Y軸設定
 tick_num = 5;
-ytick_vecs = cell(1,3);
-for axis_idx = 1:3
-    tick_interval = (all_max(axis_idx) - all_min(axis_idx)) / tick_num;
-    ytick_vecs{axis_idx} = all_min(axis_idx):tick_interval:all_max(axis_idx);
-end
+tick_interval = (all_max - all_min) / tick_num;
+ytick_vec = all_min:tick_interval:all_max;
 
-for axis_idx = 1:3
-    figure('Position', [100, 100, 1600, 600]);
-    for i = 1:size(file_gain_list,1)
-        subplot(4,4,i);
-        csv_file = file_gain_list{i,1};
-        gain = file_gain_list{i,2};
-        time_vec = all_time_vec{i};
-        diff_val = all_diff{axis_idx, i};
-        center_val = all_center(axis_idx, i);
-        
-        plot(time_vec, diff_val, '-', 'LineWidth', 1.5, 'Color', color_list(i,:));
-        hold on;
-        
-        % t=0の位置に赤い縦線を引く
-        plot([0, 0], [all_min(axis_idx), all_max(axis_idx)], 'r-', 'LineWidth', 2);
-        
-        % 振動中心を緑の破線で表示
-        plot([all_time_min, all_time_max], [center_val, center_val], 'g--', 'LineWidth', 1.5);
-        
-        grid on;
-        xlabel('Time [s]');
-        ylabel([axes_names{axis_idx} ' Pos Diff [m]']);
-        ylim([all_min(axis_idx), all_max(axis_idx)]);
-        yticks(ytick_vecs{axis_idx});
-        xlim([all_time_min, all_time_max]);
+% x軸のみのプロット
+figure('Position', [100, 100, 1600, 600]);
+gains = zeros(size(file_gain_list,1), 1);
 
-        % t>=0の部分でピーク検出と減衰率計算
-        post_zero_mask = time_vec >= 0;
-        if sum(post_zero_mask) > 10
-            time_post = time_vec(post_zero_mask);
-            diff_post = diff_val(post_zero_mask);
-            
-            [pks, locs] = findpeaks(abs(diff_post - center_val), 'MinPeakProminence', 0.005);
-            if ~isempty(locs)
-                peak_times = time_post(locs);
-                plot(peak_times, diff_post(locs), 'ro', 'MarkerSize', 7, 'LineWidth', 1.5);
-                
-                if length(pks) >= 2
-                    log_pks = log(pks);
-                    p = polyfit(peak_times, log_pks, 1);
-                    damping_rate = -p(1);
-                    title(sprintf('Gain=%.2f, Damp=%.4f\nCenter=%.4f m', gain, damping_rate, center_val), 'FontSize', 8);
-                else
-                    title(sprintf('Gain=%.2f\nCenter=%.4f m', gain, center_val), 'FontSize', 8);
-                end
-            else
-                title(sprintf('Gain=%.2f\nCenter=%.4f m', gain, center_val), 'FontSize', 8);
-            end
-        else
-            title(sprintf('Gain=%.2f\nCenter=%.4f m', gain, center_val), 'FontSize', 8);
+for i = 1:size(file_gain_list,1)
+    subplot(4,4,i);
+    gain = file_gain_list{i,2};
+    gains(i) = gain;
+    time_vec = all_time_vec{i};
+    diff_val = all_diff{i};
+    center_val = all_center(i);
+    damping_rate = all_damping_rate(i);
+    
+    plot(time_vec, diff_val, '-', 'LineWidth', 1.5, 'Color', color_list(i,:));
+    hold on;
+    
+    % t=0の位置に赤い縦線を引く
+    plot([0, 0], [all_min, all_max], 'r-', 'LineWidth', 2);
+    
+    % 振動中心を緑の破線で表示
+    plot([all_time_min, all_time_max], [center_val, center_val], 'g--', 'LineWidth', 1.5);
+    
+    grid on;
+    xlabel('Time [s]');
+    ylabel('X Pos Diff [m]');
+    ylim([all_min, all_max]);
+    yticks(ytick_vec);
+    xlim([all_time_min, all_time_max]);
+
+    % t=0からdecay_end_timeまでの区間でピーク表示
+    decay_mask = (time_vec >= 0) & (time_vec <= decay_end_time);
+    if sum(decay_mask) > 10
+        time_decay = time_vec(decay_mask);
+        diff_decay = diff_val(decay_mask);
+        [pks, locs] = findpeaks(abs(diff_decay - center_val), 'MinPeakProminence', 0.005);
+        if ~isempty(locs)
+            peak_times = time_decay(locs);
+            plot(peak_times, diff_decay(locs), 'ro', 'MarkerSize', 7, 'LineWidth', 1.5);
         end
     end
-    sgtitle(['Drone-Payload ' axes_names{axis_idx} ' Position Difference (Gain別, 50Hz)']);
-
-    % PNGとして連番保存
-    output_dir = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures';
-    if ~exist(output_dir, 'dir')
-        mkdir(output_dir);
+    
+    if ~isnan(damping_rate)
+        title(sprintf('Gain=%.2f, Damp=%.4f\nCenter=%.4f m', gain, damping_rate, center_val), 'FontSize', 8);
+    else
+        title(sprintf('Gain=%.2f\nCenter=%.4f m', gain, center_val), 'FontSize', 8);
     end
-    file_pattern = fullfile(output_dir, ['plot_gain_compare_' axes_names{axis_idx} '_*.png']);
-    files = dir(file_pattern);
-    next_num = numel(files) + 1;
-    output_file = fullfile(output_dir, sprintf('plot_gain_compare_%s_%03d.png', axes_names{axis_idx}, next_num));
-    saveas(gcf, output_file);
 end
+sgtitle('Drone-Payload X Position Difference (Gain別, 50Hz)');
+
+% PNGとして保存
+output_dir = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures';
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
+file_pattern = fullfile(output_dir, 'plot_gain_compare_X_*.png');
+files = dir(file_pattern);
+next_num = numel(files) + 1;
+output_file = fullfile(output_dir, sprintf('plot_gain_compare_X_%03d.png', next_num));
+saveas(gcf, output_file);
+
+% 減衰率 vs ゲインのプロット
+figure('Position', [200, 200, 800, 400]);
+plot(gains, all_damping_rate, 'o', 'MarkerSize', 8);
+grid on;
+xlabel('Gain');
+ylabel('Damping Rate');
+title('Damping Rate vs Gain (X軸)');
+
+% このまとめグラフもPNGで保存
+file_pattern_gain = fullfile(output_dir, 'plot_damping_gain_*.png');
+files_gain = dir(file_pattern_gain);
+next_num_gain = numel(files_gain) + 1;
+output_file_gain = fullfile(output_dir, sprintf('plot_damping_gain_%03d.png', next_num_gain));
+saveas(gcf, output_file_gain);
