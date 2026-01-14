@@ -100,10 +100,14 @@ for i = 1:size(file_gain_list_sorted,1)
     end
 sgtitle('Drone-Payload X Position Difference (All Files, Sorted by Gain)');
 
-% PNGとして保存
+% PNGとして連番で保存
 output_dir = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
-output_file = fullfile(output_dir, 'plot_motion_capture.png');
+% 既存の同名ファイル数をカウントして連番を付与
+file_pattern = fullfile(output_dir, 'plot_motion_capture_*.png');
+files = dir(file_pattern);
+next_num = numel(files) + 1;
+output_file = fullfile(output_dir, sprintf('plot_motion_capture_%03d.png', next_num));
 saveas(gcf, output_file);
