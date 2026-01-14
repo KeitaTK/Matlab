@@ -7,18 +7,18 @@ clear all; close all; clc;
 
 % ファイルとゲインの対応リスト
 file_gain_list = {
-    'OBS/RLS/motion_capture/record_20260113_183814.csv', 0;
-    'OBS/RLS/motion_capture/record_20260113_183850.csv', 0;
-    'OBS/RLS/motion_capture/record_20260113_185207.csv', 0.02;
-    'OBS/RLS/motion_capture/record_20260113_185232.csv', 0.02;
-    'OBS/RLS/motion_capture/record_20260113_185602.csv', 0.04;
-    'OBS/RLS/motion_capture/record_20260113_185628.csv', 0.04;
-    'OBS/RLS/motion_capture/record_20260113_185924.csv', 0.06;
-    'OBS/RLS/motion_capture/record_20260113_190008.csv', 0.06;
-    'OBS/RLS/motion_capture/record_20260113_190233.csv', 0.08;
-    'OBS/RLS/motion_capture/record_20260113_190300.csv', 0.08;
-    'OBS/RLS/motion_capture/record_20260113_190600.csv', 0;
-    'OBS/RLS/motion_capture/record_20260113_190626.csv', 0;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_183814.csv', 0;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_183850.csv', 0;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_185207.csv', 0.02;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_185232.csv', 0.02;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_185602.csv', 0.04;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_185628.csv', 0.04;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_185924.csv', 0.06;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_190008.csv', 0.06;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_190233.csv', 0.08;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_190300.csv', 0.08;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_190600.csv', 0;
+    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260113_190626.csv', 0;
 };
 
 
@@ -99,3 +99,11 @@ for i = 1:size(file_gain_list_sorted,1)
     end
     end
 sgtitle('Drone-Payload X Position Difference (All Files, Sorted by Gain)');
+
+% PNGとして保存
+output_dir = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures';
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
+output_file = fullfile(output_dir, 'plot_motion_capture.png');
+saveas(gcf, output_file);
