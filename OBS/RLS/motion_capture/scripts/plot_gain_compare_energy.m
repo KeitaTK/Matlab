@@ -1,6 +1,6 @@
-% RLS 振れ制御 Gain別 pos_x 比較プロット
-% 2026/01/14 新規作成
-% ファイルとGain値の対応は写真・リストより
+% RLS 振れ制御 Gain別 pos_x エネルギー評価
+% 2026/01/15 新規作成
+% エネルギーベースでの減衰評価を実施
 
 clear all; close all; clc;
 
@@ -27,18 +27,18 @@ color_list = lines(size(file_gain_list,1));
 drone_field = 'pos_x';
 all_diff = cell(size(file_gain_list,1), 1);
 all_time_vec = cell(size(file_gain_list,1), 1);
+all_energy_vec = cell(size(file_gain_list,1), 1);
 all_center = zeros(size(file_gain_list,1), 1);
-all_damping_rate = nan(size(file_gain_list,1), 1);
+all_energy_damping_rate = nan(size(file_gain_list,1), 1);
 all_min = inf;
 all_max = -inf;
 all_time_min = inf;
 all_time_max = -inf;
 
-
 fs = 50;
 dt = 1/fs;
 decay_end_time = 5; % 減衰率計算の終了時刻 [秒]
-offset_before_zero = -1; % 0検出点の何秒前をt=0にするか [秒]
+offset_before_zero = 0; % 0検出点の何秒前をt=0にするか [秒]
 
 for i = 1:size(file_gain_list,1)
     csv_file = file_gain_list{i,1};
@@ -86,25 +86,34 @@ for i = 1:size(file_gain_list,1)
         center_val = mean(diff_val);
     end
     
+    % エネルギー計算：振動中心からの変位の二乗
+    energy_vec = (diff_val - center_val).^2;
+    
     all_diff{i} = diff_val;
     all_time_vec{i} = time_vec;
+    all_energy_vec{i} = energy_vec;
     all_center(i) = center_val;
     all_min = min(all_min, min(diff_val));
     all_max = max(all_max, max(diff_val));
     all_time_min = min(all_time_min, min(time_vec));
     all_time_max = max(all_time_max, max(time_vec));
     
-    % t=0からdecay_end_timeまでの区間で減衰率計算
+    % t=0からdecay_end_timeまでの区間でエネルギー減衰率計算
     decay_mask = (time_vec >= 0) & (time_vec <= decay_end_time);
     if sum(decay_mask) > 10
         time_decay = time_vec(decay_mask);
-        diff_decay = diff_val(decay_mask);
-        [pks, locs] = findpeaks(abs(diff_decay - center_val), 'MinPeakProminence', 0.005);
+        energy_decay = energy_vec(decay_mask);
+        
+        % ピークエネルギーを検出
+        [pks, locs] = findpeaks(energy_decay, 'MinPeakProminence', 0.00001);
         if length(pks) >= 2
+            % エネルギーの対数をとって線形フィッティング
+            % E(t) = E0 * exp(-2*damping_rate*t)
             log_pks = log(pks);
             peak_times = time_decay(locs);
             p = polyfit(peak_times, log_pks, 1);
-            all_damping_rate(i) = -p(1);
+            % エネルギー減衰率は振幅減衰率の2倍
+            all_energy_damping_rate(i) = -p(1);
         end
     end
 end
@@ -114,7 +123,7 @@ tick_num = 5;
 tick_interval = (all_max - all_min) / tick_num;
 ytick_vec = all_min:tick_interval:all_max;
 
-% x軸のみのプロット
+% x軸のみのプロット（位置データ）
 figure('Position', [100, 100, 1600, 600]);
 gains = zeros(size(file_gain_list,1), 1);
 
@@ -125,7 +134,7 @@ for i = 1:size(file_gain_list,1)
     time_vec = all_time_vec{i};
     diff_val = all_diff{i};
     center_val = all_center(i);
-    damping_rate = all_damping_rate(i);
+    energy_damping_rate = all_energy_damping_rate(i);
     
     plot(time_vec, diff_val, '-', 'LineWidth', 1.5, 'Color', color_list(i,:));
     hold on;
@@ -143,35 +152,37 @@ for i = 1:size(file_gain_list,1)
     yticks(ytick_vec);
     xlim([all_time_min, all_time_max]);
 
-    % t=0からdecay_end_timeまでの区間で減衰曲線を表示
+    % t=0からdecay_end_timeまでの区間でエネルギー減衰曲線を表示
     decay_mask = (time_vec >= 0) & (time_vec <= decay_end_time);
     if sum(decay_mask) > 10
         time_decay = time_vec(decay_mask);
-        diff_decay = diff_val(decay_mask);
-        [pks, locs] = findpeaks(abs(diff_decay - center_val), 'MinPeakProminence', 0.005);
+        energy_decay = all_energy_vec{i}(decay_mask);
+        [pks, locs] = findpeaks(energy_decay, 'MinPeakProminence', 0.00001);
         
-        % 減衰率が有効な場合、指数減衰曲線を表示
-        if ~isnan(damping_rate) && damping_rate > 0
-            % 最初のピークの大きさから初期振幅を計算
+        % エネルギー減衰率が有効な場合、振幅エンベロープを表示
+        if ~isnan(energy_damping_rate) && energy_damping_rate > 0
+            % エネルギー減衰：E(t) = E0 * exp(-2*lambda*t)
+            % 振幅減衰：A(t) = A0 * exp(-lambda*t), lambda = energy_damping_rate / 2
             if ~isempty(pks)
-                A0 = pks(1);
+                E0 = pks(1);
+                A0 = sqrt(E0);
                 time_fit = linspace(0, decay_end_time, 200);
-                % 指数減衰：A(t) = A0 * exp(-damping_rate * t)
-                envelope_pos = center_val + A0 * exp(-damping_rate * time_fit);
-                envelope_neg = center_val - A0 * exp(-damping_rate * time_fit);
+                % 振幅エンベロープ
+                envelope_pos = center_val + A0 * exp(-energy_damping_rate/2 * time_fit);
+                envelope_neg = center_val - A0 * exp(-energy_damping_rate/2 * time_fit);
                 plot(time_fit, envelope_pos, 'r-', 'LineWidth', 2, 'DisplayName', 'Envelope');
                 plot(time_fit, envelope_neg, 'r-', 'LineWidth', 2, 'HandleVisibility', 'off');
             end
         end
     end
     
-    if ~isnan(damping_rate)
-        title(sprintf('Gain=%.2f, Damp=%.4f\nCenter=%.4f m', gain, damping_rate, center_val), 'FontSize', 8);
+    if ~isnan(energy_damping_rate)
+        title(sprintf('Gain=%.2f, E-Damp=%.4f\nCenter=%.4f m', gain, energy_damping_rate, center_val), 'FontSize', 8);
     else
         title(sprintf('Gain=%.2f\nCenter=%.4f m', gain, center_val), 'FontSize', 8);
     end
 end
-sgtitle('Drone-Payload X Position Difference (Gain別, 50Hz)');
+sgtitle('Drone-Payload X Position Difference (Gain別, Energy-based)');
 
 
 % プログラム名ごとにfigures内にサブフォルダを作成
@@ -180,24 +191,75 @@ output_dir = fullfile('C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/f
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
-file_pattern = fullfile(output_dir, 'plot_gain_compare_X_*.png');
+file_pattern = fullfile(output_dir, 'plot_gain_compare_X_energy_*.png');
 files = dir(file_pattern);
 next_num = numel(files) + 1;
-output_file = fullfile(output_dir, sprintf('plot_gain_compare_X_%03d.png', next_num));
+output_file = fullfile(output_dir, sprintf('plot_gain_compare_X_energy_%03d.png', next_num));
 saveas(gcf, output_file);
 
-% 減衰率 vs ゲインのプロット
-figure('Position', [200, 200, 800, 400]);
-plot(gains, all_damping_rate, 'o', 'MarkerSize', 8);
+% エネルギー vs 時間のプロット（Gain別）
+figure('Position', [200, 200, 1600, 600]);
+
+for i = 1:size(file_gain_list,1)
+    subplot(4,4,i);
+    gain = file_gain_list{i,2};
+    time_vec = all_time_vec{i};
+    energy_vec = all_energy_vec{i};
+    energy_damping_rate = all_energy_damping_rate(i);
+    
+    % t=0からdecay_end_timeまでの区間を表示
+    decay_mask = (time_vec >= 0) & (time_vec <= decay_end_time);
+    plot(time_vec(decay_mask), energy_vec(decay_mask), '-', 'LineWidth', 1.5, 'Color', color_list(i,:));
+    hold on;
+    
+    % エネルギー減衰の理論曲線を重ねる
+    if ~isnan(energy_damping_rate) && energy_damping_rate > 0
+        time_decay = time_vec(decay_mask);
+        energy_decay = energy_vec(decay_mask);
+        [pks, locs] = findpeaks(energy_decay, 'MinPeakProminence', 0.00001);
+        
+        if ~isempty(pks)
+            E0 = pks(1);
+            time_fit = linspace(0, decay_end_time, 200);
+            % エネルギー減衰：E(t) = E0 * exp(-energy_damping_rate * t)
+            energy_fit = E0 * exp(-energy_damping_rate * time_fit);
+            plot(time_fit, energy_fit, 'r--', 'LineWidth', 2, 'DisplayName', 'Fitted Decay');
+        end
+    end
+    
+    grid on;
+    xlabel('Time [s]');
+    ylabel('Energy [m^2]');
+    xlim([0, decay_end_time]);
+    
+    if ~isnan(energy_damping_rate)
+        title(sprintf('Gain=%.2f\nE-Damp=%.4f', gain, energy_damping_rate), 'FontSize', 8);
+    else
+        title(sprintf('Gain=%.2f', gain), 'FontSize', 8);
+    end
+end
+sgtitle('Energy Decay vs Time (Gain別)');
+
+
+% このエネルギーグラフもPNGで保存
+file_pattern_energy = fullfile(output_dir, 'plot_energy_decay_*.png');
+files_energy = dir(file_pattern_energy);
+next_num_energy = numel(files_energy) + 1;
+output_file_energy = fullfile(output_dir, sprintf('plot_energy_decay_%03d.png', next_num_energy));
+saveas(gcf, output_file_energy);
+
+% エネルギー減衰率 vs ゲインのプロット
+figure('Position', [300, 300, 800, 400]);
+plot(gains, all_energy_damping_rate, 'o', 'MarkerSize', 8, 'LineWidth', 1.5);
 grid on;
 xlabel('Gain');
-ylabel('Damping Rate');
-title('Damping Rate vs Gain (X軸)');
+ylabel('Energy Damping Rate (E-Damp)');
+title('Energy Damping Rate vs Gain');
 
 
-% このまとめグラフもPNGで保存
-file_pattern_gain = fullfile(output_dir, 'plot_damping_gain_*.png');
-files_gain = dir(file_pattern_gain);
-next_num_gain = numel(files_gain) + 1;
-output_file_gain = fullfile(output_dir, sprintf('plot_damping_gain_%03d.png', next_num_gain));
-saveas(gcf, output_file_gain);
+% PNG保存
+file_pattern_edamp = fullfile(output_dir, 'plot_energy_damping_gain_*.png');
+files_edamp = dir(file_pattern_edamp);
+next_num_edamp = numel(files_edamp) + 1;
+output_file_edamp = fullfile(output_dir, sprintf('plot_energy_damping_gain_%03d.png', next_num_edamp));
+saveas(gcf, output_file_edamp);
