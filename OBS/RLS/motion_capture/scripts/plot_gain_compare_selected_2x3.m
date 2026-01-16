@@ -93,7 +93,7 @@ for idx = 1:length(show_idx)
     plot([all_time_min, all_time_max], [center_val, center_val], 'g--', 'LineWidth', 1.5);
     grid on;
     xlabel('Time [s]');
-    ylabel('X Pos Diff [m]');
+    ylabel('\Deltax(t) [m]');
     ylim([all_min, all_max]);
     yticks(ytick_vec);
     xlim([-5, 35]);
