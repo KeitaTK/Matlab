@@ -6,18 +6,18 @@ clear all; close all; clc;
 
 % ファイルリストとGain値（写真・リストより）
 file_gain_list = {
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173422.csv', 0;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173622.csv', 0;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175531.csv', 0.04;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175653.csv', 0.04;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181118.csv', 0.08;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181237.csv', 0.08;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_183840.csv', 0.12;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184006.csv', 0.12;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184410.csv', 0.16;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184516.csv', 0.16;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv', 0.20;
-    'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185645.csv', 0.20;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173422.csv', 0;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173622.csv', 0;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175531.csv', 0.04;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175653.csv', 0.04;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181118.csv', 0.08;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181237.csv', 0.08;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_183840.csv', 0.12;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184006.csv', 0.12;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184410.csv', 0.16;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184516.csv', 0.16;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv', 0.20;
+    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185645.csv', 0.20;
 };
 
 color_list = lines(size(file_gain_list,1));
@@ -176,7 +176,7 @@ sgtitle('Drone-Payload X Position Difference (Gain別, 50Hz)');
 
 % プログラム名ごとにfigures内にサブフォルダを作成
 [~, script_name, ~] = fileparts(mfilename('fullpath'));
-output_dir = fullfile('C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures', script_name);
+output_dir = fullfile('C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/figures', script_name);
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end

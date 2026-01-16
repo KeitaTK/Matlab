@@ -11,11 +11,11 @@ graph_tmin = 0;          % グラフ表示の開始時刻 [s]
 graph_tmax = 30;         % グラフ表示の終了時刻 [s]
 
 % 比較する2つのファイル
-file1 = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173422.csv';
+file1 = 'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173622.csv';
 gain1 = 0;
 start_time1 = 4.16; % gain=0のこの時刻をt=0にする
 
-file2 = 'C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv';
+file2 = 'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv';
 gain2 = 0.20;
 start_time2 = 0.08; % gain=0.20のこの時刻をt=0にする
 
@@ -185,20 +185,20 @@ xlim([graph_tmin, graph_tmax]);
 % (b)を左上やや右に
 text(graph_tmin + 0.10*(graph_tmax-graph_tmin), max([max(energy_vec1), max(energy_vec2)]) - 0.05*max([max(energy_vec1), max(energy_vec2)]), '(b)', 'FontSize', 16, 'FontWeight', 'bold', 'VerticalAlignment', 'top');
 
-% --- エネルギー減衰率の計算（Log-Linear Fit のみ、近似曲線はプロットしない） ---
+
+% --- エネルギーピークのみ抽出しpolyfit ---
+% gain=0
 energy_mask1 = (time_vec1_plot >= energy_eval_tmin) & (time_vec1_plot <= energy_eval_tmax);
 energy_vec1_10s = energy_vec1(energy_mask1);
 time_vec1_plot_10s = time_vec1_plot(energy_mask1);
 
-energy_mask2 = (time_vec2_plot >= energy_eval_tmin) & (time_vec2_plot <= energy_eval_tmax);
-energy_vec2_10s = energy_vec2(energy_mask2);
-time_vec2_plot_10s = time_vec2_plot(energy_mask2);
+% ピーク抽出
+[pks1, locs1] = findpeaks(energy_vec1_10s, time_vec1_plot_10s);
 
-% gain=0
-if ~isempty(energy_vec1_10s) && max(energy_vec1_10s) > 0
-    valid_idx1 = energy_vec1_10s > max(energy_vec1_10s)*1e-6;
-    t1 = time_vec1_plot_10s(valid_idx1);
-    e1 = energy_vec1_10s(valid_idx1);
+if ~isempty(pks1) && max(pks1) > 0
+    valid_idx1 = pks1 > max(pks1)*1e-6;
+    t1 = locs1(valid_idx1);
+    e1 = pks1(valid_idx1);
     log_e1 = log(e1);
     p1 = polyfit(t1, log_e1, 1);
     decay_rate1 = -p1(1);
@@ -207,10 +207,16 @@ else
 end
 
 % gain=0.20
-if ~isempty(energy_vec2_10s) && max(energy_vec2_10s) > 0
-    valid_idx2 = energy_vec2_10s > max(energy_vec2_10s)*1e-6;
-    t2 = time_vec2_plot_10s(valid_idx2);
-    e2 = energy_vec2_10s(valid_idx2);
+energy_mask2 = (time_vec2_plot >= energy_eval_tmin) & (time_vec2_plot <= energy_eval_tmax);
+energy_vec2_10s = energy_vec2(energy_mask2);
+time_vec2_plot_10s = time_vec2_plot(energy_mask2);
+
+[pks2, locs2] = findpeaks(energy_vec2_10s, time_vec2_plot_10s);
+
+if ~isempty(pks2) && max(pks2) > 0
+    valid_idx2 = pks2 > max(pks2)*1e-6;
+    t2 = locs2(valid_idx2);
+    e2 = pks2(valid_idx2);
     log_e2 = log(e2);
     p2 = polyfit(t2, log_e2, 1);
     decay_rate2 = -p2(1);
@@ -218,9 +224,15 @@ else
     decay_rate2 = NaN;
 end
 
+% --- ピーク点をグラフに表示 ---
+subplot(2,1,2);
+hold on;
+plot(locs1, pks1, 'o', 'Color', [0, 0.4470, 0.7410], 'MarkerFaceColor', [0, 0.4470, 0.7410], 'DisplayName', 'Gain=0 Peak');
+plot(locs2, pks2, 'o', 'Color', [0.8500, 0.3250, 0.0980], 'MarkerFaceColor', [0.8500, 0.3250, 0.0980], 'DisplayName', 'Gain=0.20 Peak');
+
 % 保存
 [~, script_name, ~] = fileparts(mfilename('fullpath'));
-output_dir = fullfile('C:/Users/taki/Local/local/Matlab/OBS/RLS/motion_capture/figures', script_name);
+output_dir = fullfile('C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/figures', script_name);
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
