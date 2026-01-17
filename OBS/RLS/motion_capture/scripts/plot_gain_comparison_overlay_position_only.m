@@ -8,12 +8,14 @@ clear all; close all; clc;
 graph_tmin = 0;          % グラフ表示の開始時刻 [s]
 graph_tmax = 30;         % グラフ表示の終了時刻 [s]
 
-% 比較する2つのファイル
-file1 = 'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173622.csv';
+% 比較する2つのファイル（相対パス）
+script_dir = fileparts(mfilename('fullpath'));
+data_dir = fullfile(script_dir, '..', 'data', 'motion_capture');
+file1 = fullfile(data_dir, 'record_20260114_173622.csv');
 gain1 = 0;
 start_time1 = 4.16; % gain=0のこの時刻をt=0にする
 
-file2 = 'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv';
+file2 = fullfile(data_dir, 'record_20260114_185540.csv');
 gain2 = 0.20;
 start_time2 = 0.08; % gain=0.20のこの時刻をt=0にする
 
@@ -134,7 +136,7 @@ xlim([xmin, xmax]);
 
 % 保存
 [~, script_name, ~] = fileparts(mfilename('fullpath'));
-output_dir = fullfile('C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/figures', script_name);
+output_dir = fullfile(fileparts(mfilename('fullpath')), '..', 'figures', script_name);
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end

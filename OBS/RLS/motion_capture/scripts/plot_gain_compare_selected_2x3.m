@@ -4,19 +4,21 @@
 
 clear all; close all; clc;
 
+script_dir = fileparts(mfilename('fullpath'));
+data_dir = fullfile(script_dir, '..', 'data', 'motion_capture');
 file_gain_list = {
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173422.csv', 0;    % 1
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_173622.csv', 0;    % 2
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175531.csv', 0.04; % 3
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_175653.csv', 0.04; % 4
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181118.csv', 0.08; % 5
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_181237.csv', 0.08; % 6
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_183840.csv', 0.12; % 7
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184006.csv', 0.12; % 8
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184410.csv', 0.16; % 9
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_184516.csv', 0.16; % 10
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185540.csv', 0.20; % 11
-    'C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/csv/record_20260114_185645.csv', 0.20; % 12
+    fullfile(data_dir, 'record_20260114_173422.csv'), 0;    % 1
+    fullfile(data_dir, 'record_20260114_173622.csv'), 0;    % 2
+    fullfile(data_dir, 'record_20260114_175531.csv'), 0.04; % 3
+    fullfile(data_dir, 'record_20260114_175653.csv'), 0.04; % 4
+    fullfile(data_dir, 'record_20260114_181118.csv'), 0.08; % 5
+    fullfile(data_dir, 'record_20260114_181237.csv'), 0.08; % 6
+    fullfile(data_dir, 'record_20260114_183840.csv'), 0.12; % 7
+    fullfile(data_dir, 'record_20260114_184006.csv'), 0.12; % 8
+    fullfile(data_dir, 'record_20260114_184410.csv'), 0.16; % 9
+    fullfile(data_dir, 'record_20260114_184516.csv'), 0.16; % 10
+    fullfile(data_dir, 'record_20260114_185540.csv'), 0.20; % 11
+    fullfile(data_dir, 'record_20260114_185645.csv'), 0.20; % 12
 };
 
 color_list = lines(size(file_gain_list,1));
@@ -103,7 +105,7 @@ end
 
 % 保存
 [~, script_name, ~] = fileparts(mfilename('fullpath'));
-output_dir = fullfile('C:/Users/keita/Documents/Local/Matlab/OBS/RLS/motion_capture/figures', script_name);
+output_dir = fullfile(fileparts(mfilename('fullpath')), '..', 'figures', script_name);
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
