@@ -1,0 +1,30 @@
+=== RLS Phase Estimation - Comprehensive Sweep Results ===
+
+
+Variable: all_results
+Type: cell
+Size: [5 1]
+
+Variable: ans
+Type: double
+Size: [1 1]
+
+Variable: fid
+Type: double
+Size: [1 1]
+
+Variable: mat_file
+Type: char
+Size: [1 118]
+
+Variable: results_dir
+Type: char
+Size: [1 93]
+
+Variable: summary_file
+Type: char
+Size: [1 111]
+
+Variable: sweeps
+Type: cell
+Size: [1 5]
