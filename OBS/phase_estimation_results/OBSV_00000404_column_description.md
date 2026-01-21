@@ -1,0 +1,38 @@
+# OBSV_data_00000404.csv 各カラムの説明
+
+このドキュメントは、`plot_OBSV_00000404_all_columns.m` で自動的にグラフ化された各カラム（変数）の意味・内容をまとめたものです。
+
+## カラム一覧と説明
+
+| カラム名    | 説明（推定・例）                                  |
+|:------------|:--------------------------------------------------|
+| TimeUS      | タイムスタンプ（マイクロ秒単位、ただし値は不正）   |
+| PLX         | 位置X成分（Position X）                           |
+| PLY         | 位置Y成分（Position Y）                           |
+| PLZ         | 位置Z成分（Position Z）                           |
+| AX          | 加速度X成分（Acceleration X）                      |
+| AY          | 加速度Y成分（Acceleration Y）                      |
+| BX          | 観測値BのX成分（Observation B - X）                |
+| BY          | 観測値BのY成分（Observation B - Y）                |
+| CX          | 観測値CのX成分（Observation C - X）                |
+| CY          | 観測値CのY成分（Observation C - Y）                |
+| PRX         | 推定位置X成分（Predicted/Estimated Position X）     |
+| PRY         | 推定位置Y成分（Predicted/Estimated Position Y）     |
+| PRZ         | 推定位置Z成分（Predicted/Estimated Position Z）     |
+| ERR         | 推定誤差（Estimation Error）                       |
+| EST_FREQ    | 推定周波数（Estimated Frequency）                  |
+| CORR        | 相関係数（Correlation Coefficient）                |
+
+> ※カラム名の意味は推定を含みます。正確な定義はデータ生成元の仕様書をご参照ください。
+
+---
+
+## このプログラムで抜き出している情報
+- 上記すべての数値カラムを時系列グラフ化し、`results` フォルダにPNG画像として保存しています。
+- 時間軸は100Hzサンプリング（0.01秒刻み、行番号ベース）で作成しています。
+
+---
+
+## 参考
+- グラフファイル例: `OBSV_00000404_PLX.png`, `OBSV_00000404_ERR.png` など
+- スクリプト: `plot_OBSV_00000404_all_columns.m`
