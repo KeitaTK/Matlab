@@ -5,7 +5,7 @@ clear; close all;
 % === 設定 ===
 dataDir = fullfile('..', 'data');
 resultsDir = fullfile('..', 'results');
-csvFileName = 'OBSV_data_00000418.csv';
+csvFileName = 'OBSV_data_00000422.csv';
 dataPath = fullfile(dataDir, csvFileName);
 
 
