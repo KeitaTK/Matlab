@@ -8,8 +8,8 @@ resultsDir = fullfile('..', 'results');
 
 % 処理対象のCSVファイルを指定 （このセルアレイを編集してください）
 csvFileNames = {
-    'OBSV_data_00000426.csv'
-    'OBSV_data_00000427.csv'
+    'OBSV_data_00000434.csv'
+    'OBSV_data_00000435.csv'
 };
 
 % 指定されたファイルの存在確認
