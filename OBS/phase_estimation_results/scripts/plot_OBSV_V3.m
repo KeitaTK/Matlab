@@ -68,6 +68,13 @@ for fileIdx = 1:length(csvFiles)
                 xlabel(timeLabel);
                 ylabel(varName);
                 title(sprintf('変数: %s  (%d points)', varName, numPoints), 'Interpreter', 'none');
+                % Fの場合は目標周波数の赤横線を追加
+                if strcmp(varName, 'F')
+                    g = 9.80665; % 重力加速度 [m/s^2]
+                    L = 1.04;    % 紐の長さ [m]
+                    f_pendulum = 1/(2*pi)*sqrt(g/L); % [Hz]
+                    yline(f_pendulum, 'r-', 'LineWidth', 2, 'Label', sprintf('%.3f Hz (L=1.04m)', f_pendulum), 'LabelHorizontalAlignment', 'left', 'LabelVerticalAlignment', 'bottom');
+                end
                 % ファイル名を安全に
                 safeVarName = regexprep(varName, '[^a-zA-Z0-9_]', '_');
                 outputPath = fullfile(fileResultsDir, sprintf('%s_%s.png', csvBaseName, safeVarName));
