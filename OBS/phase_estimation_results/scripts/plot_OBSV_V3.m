@@ -8,8 +8,8 @@ resultsDir = fullfile('..', 'results');
 
 % 処理対象のCSVファイルを指定 （このセルアレイを編集してください）
 csvFileNames = {
-    'OBSV_data_00000434.csv'
-    'OBSV_data_00000435.csv'
+    'OBSV_data_00000443.csv'
+    'OBSV_data_00000444.csv'
 };
 
 % 指定されたファイルの存在確認
@@ -173,9 +173,14 @@ for fileIdx = 1:length(csvFiles)
             fprintf('    ✓ C系列グラフを保存\n');
         end
         
+
         % 制御パラメータ (F, P, X, Y)
         ctrlVars = {'F', 'P', 'X', 'Y'};
         availableCtrl = intersect(ctrlVars, varNames);
+        % 紐の長さ1.04mの単振り子の理論振動周波数を計算
+        g = 9.80665; % 重力加速度 [m/s^2]
+        L = 1.04;    % 紐の長さ [m]
+        f_pendulum = 1/(2*pi)*sqrt(g/L); % [Hz]
         if ~isempty(availableCtrl)
             figCtrl = figure('Visible','off','Position',[100,100,1200,1000]);
             for i = 1:length(availableCtrl)
@@ -185,6 +190,10 @@ for fileIdx = 1:length(csvFiles)
                 xlabel(timeLabel);
                 title(sprintf('%s vs Time', availableCtrl{i}));
                 grid on;
+                % Fのときだけ赤横線を描画
+                if strcmp(availableCtrl{i}, 'F')
+                    yline(f_pendulum, 'r-', 'LineWidth', 2, 'Label', sprintf('%.3f Hz (L=1.04m)', f_pendulum), 'LabelHorizontalAlignment', 'left', 'LabelVerticalAlignment', 'bottom');
+                end
             end
             saveas(figCtrl, fullfile(fileResultsDir, sprintf('%s_control_params.png', csvBaseName)));
             close(figCtrl);
