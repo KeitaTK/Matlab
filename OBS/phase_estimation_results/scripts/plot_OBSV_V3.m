@@ -97,6 +97,27 @@ for fileIdx = 1:length(csvFiles)
             close(figPos);
             fprintf('    ✓ 位置データグラフを保存\n');
         end
+
+        % PLXとAX,AYから計算した振幅を重ねてプロット
+        if ismember('PLX', varNames) && ismember('AX', varNames) && ismember('AY', varNames)
+            amplitude = sqrt(data.AX.^2 + data.AY.^2);
+            figPLXamp = figure('Visible','off','Position',[100,100,1200,600]);
+            subplot(2,1,1);
+            plot(timeSec, data.PLX, 'b-', 'LineWidth', 1.5);
+            ylabel('PLX');
+            xlabel(timeLabel);
+            title('PLX vs Time');
+            grid on;
+            subplot(2,1,2);
+            plot(timeSec, amplitude, 'r--', 'LineWidth', 1.5);
+            ylabel('sqrt(AX^2 + AY^2)');
+            xlabel(timeLabel);
+            title('AX,AYから計算した振幅 vs Time');
+            grid on;
+            saveas(figPLXamp, fullfile(fileResultsDir, sprintf('%s_PLX_and_Amplitude.png', csvBaseName)));
+            close(figPLXamp);
+            fprintf('    ✓ PLXと振幅グラフを保存\n');
+        end
         
         % A系列 (AX, AY)
         aVars = {'AX', 'AY'};
