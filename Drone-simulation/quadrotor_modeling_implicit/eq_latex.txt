@@ -1,0 +1,6 @@
+% Omega
+\left(\begin{array}{c} \mathrm{dphi}-\mathrm{dpsi}\,\sin\left(\theta \right)\\ \mathrm{dtheta}\,\cos\left(\phi \right)+\mathrm{dpsi}\,\cos\left(\theta \right)\,\sin\left(\phi \right)\\ \mathrm{dpsi}\,\cos\left(\phi \right)\,\cos\left(\theta \right)-\mathrm{dtheta}\,\sin\left(\phi \right) \end{array}\right)
+
+% M_rot
+\left(\begin{array}{ccc} J_{\mathrm{xx}} & 0 & -J_{\mathrm{xx}}\,\sin\left(\theta \right)\\ 0 & 0.5000\,J_{\mathrm{yy}}+0.5000\,J_{\mathrm{zz}}+0.5000\,J_{\mathrm{yy}}\,\cos\left(2\,\phi \right)-0.5000\,J_{\mathrm{zz}}\,\cos\left(2\,\phi \right) & 0.5000\,\sin\left(2\,\phi \right)\,\cos\left(\theta \right)\,\left(J_{\mathrm{yy}}-J_{\mathrm{zz}}\right)\\ -J_{\mathrm{xx}}\,\sin\left(\theta \right) & 0.5000\,\sin\left(2\,\phi \right)\,\cos\left(\theta \right)\,\left(J_{\mathrm{yy}}-J_{\mathrm{zz}}\right) & J_{\mathrm{zz}}+J_{\mathrm{yy}}\,{\sin\left(\phi \right)}^2-J_{\mathrm{zz}}\,{\sin\left(\phi \right)}^2+J_{\mathrm{xx}}\,{\sin\left(\theta \right)}^2-J_{\mathrm{zz}}\,{\sin\left(\theta \right)}^2-J_{\mathrm{yy}}\,{\sin\left(\phi \right)}^2\,{\sin\left(\theta \right)}^2+J_{\mathrm{zz}}\,{\sin\left(\phi \right)}^2\,{\sin\left(\theta \right)}^2 \end{array}\right)
+
