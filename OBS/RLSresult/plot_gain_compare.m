@@ -5,9 +5,9 @@
 clear all; close all; clc;
 
 % ファイルリストとGain値（写真・リストより）
-file_gain_list = {
 script_dir = fileparts(mfilename('fullpath'));
-data_dir = fullfile(script_dir, '..', 'data', 'motion_capture');
+data_dir = fullfile(script_dir, 'csv');
+file_gain_list = {
     fullfile(data_dir, 'record_20260114_173422.csv'), 0;
     fullfile(data_dir, 'record_20260114_173622.csv'), 0;
     fullfile(data_dir, 'record_20260114_175531.csv'), 0.04;
@@ -188,14 +188,25 @@ next_num = numel(files) + 1;
 output_file = fullfile(output_dir, sprintf('plot_gain_compare_X_%03d.png', next_num));
 saveas(gcf, output_file);
 
-% 減衰率 vs ゲインのプロット
-figure('Position', [200, 200, 800, 400]);
-plot(gains, all_damping_rate, 'o', 'MarkerSize', 8);
+
+
+% 減衰率 vs ゲインのプロット（ダンピングのみ＋同じゲインの平均も表示）
+figure('Position', [200, 200, 900, 400]);
+hold on;
+% 個々の点
+plot(gains, all_damping_rate, 'o', 'MarkerSize', 8, 'LineWidth', 1.5, 'Color', [0.2 0.4 0.8], 'DisplayName', 'Each Trial');
+
+
+% 同じゲインごとに平均を計算し、線でつなぐ
+[unique_gains, ~, idxu] = unique(gains);
+mean_damping = accumarray(idxu, all_damping_rate, [], @mean);
+plot(unique_gains, mean_damping, '-s', 'MarkerSize', 12, 'MarkerFaceColor', [1 0.4 0.2], 'MarkerEdgeColor', [0.8 0.2 0], 'LineWidth', 2, 'DisplayName', 'Mean per Gain');
+
 grid on;
 xlabel('Gain');
 ylabel('Damping Rate');
-title('Damping Rate vs Gain (X軸)');
-
+title('Damping Rate vs Gain (Mean per Gain Highlighted)');
+legend('show','Location','best');
 
 % このまとめグラフもPNGで保存
 file_pattern_gain = fullfile(output_dir, 'plot_damping_gain_*.png');
@@ -203,3 +214,5 @@ files_gain = dir(file_pattern_gain);
 next_num_gain = numel(files_gain) + 1;
 output_file_gain = fullfile(output_dir, sprintf('plot_damping_gain_%03d.png', next_num_gain));
 saveas(gcf, output_file_gain);
+
+
