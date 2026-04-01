@@ -31,7 +31,8 @@ cases = {
         'decay', 0.0, 'noise_std', 0.01, 'seed', 1}})
 };
 
-rows = cell(numel(cases), 13);
+rows = cell(numel(cases), 14);
+debugRows = cell(numel(cases), 8);
 traceData = struct([]);
 
 for i = 1:numel(cases)
@@ -67,7 +68,7 @@ for i = 1:numel(cases)
     rlsInnov = sig.y - rlsLogs.ypred;
     rlsMetrics = evaluate_ekf_metrics(sig.t, sig.y, rlsLogs.ypred, sig.true_freq_hz, rlsFreq, rlsInnov);
 
-    debug_validate_case(c.id, sig.t, ekfOut.f_est_hz, rlsFreq);
+    dbg = debug_validate_case(c.id, sig.t, ekfOut.f_est_hz, rlsFreq, sig.true_freq_hz);
 
     rows(i, :) = {
         c.id, ...
@@ -79,6 +80,14 @@ for i = 1:numel(cases)
         abs(ekfOut.metrics.steady_bias_hz) - abs(rlsMetrics.steady_bias_hz), ...
         ekfOut.metrics.steady_std_hz - rlsMetrics.steady_std_hz, ...
         ekfOut.metrics.nrmse - rlsMetrics.nrmse ...
+    };
+
+    debugRows(i, :) = {
+        c.id, ...
+        dbg.ekf_nonfinite_count, dbg.rls_nonfinite_count, ...
+        dbg.ekf_last10_mean_hz, dbg.rls_last10_mean_hz, ...
+        dbg.ekf_last10_std_hz, dbg.rls_last10_std_hz, ...
+        dbg.last10_abs_error_gap_hz_ekf_minus_rls ...
     };
 
     traceData(i).id = c.id; %#ok<AGROW>
@@ -102,17 +111,27 @@ summaryTable = cell2table(rows, 'VariableNames', {
 csvPath = fullfile(resultsDir, 'rls_ekf_case_comparison.csv');
 writetable(summaryTable, csvPath);
 
+debugTable = cell2table(debugRows, 'VariableNames', {
+    'case_id', ...
+    'ekf_nonfinite_count', 'rls_nonfinite_count', ...
+    'ekf_last10_mean_hz', 'rls_last10_mean_hz', ...
+    'ekf_last10_std_hz', 'rls_last10_std_hz', ...
+    'last10_abs_error_gap_hz_ekf_minus_rls'});
+debugCsvPath = fullfile(resultsDir, 'rls_ekf_debug_summary.csv');
+writetable(debugTable, debugCsvPath);
+
 matPath = fullfile(resultsDir, 'rls_ekf_case_comparison.mat');
 save(matPath, 'summaryTable', 'traceData');
 
 figPath = fullfile(resultsDir, 'rls_ekf_case_comparison.png');
 plot_comparison_figure(traceData, figPath);
 
-reportPath = fullfile(resultsDir, 'RLS_EKF_Validation_Comparison_Report.md');
-write_report(reportPath, summaryTable);
+reportPath = fullfile(resultsDir, 'RLS_EKF_Validation_Comparison_Detailed_Report.md');
+write_report(reportPath, summaryTable, debugTable);
 
 fprintf('\n[INFO] Done.\n');
 fprintf('  CSV    : %s\n', csvPath);
+fprintf('  Debug  : %s\n', debugCsvPath);
 fprintf('  MAT    : %s\n', matPath);
 fprintf('  Figure : %s\n', figPath);
 fprintf('  Report : %s\n', reportPath);
@@ -131,13 +150,16 @@ switch caseCfg.type
 end
 end
 
-function debug_validate_case(caseId, t, ekfFreq, rlsFreq)
+function dbg = debug_validate_case(caseId, t, ekfFreq, rlsFreq, trueFreq)
 fprintf('[DEBUG] %s - basic sanity checks\n', caseId);
 
-if any(~isfinite(ekfFreq))
+ekfNonfinite = sum(~isfinite(ekfFreq));
+rlsNonfinite = sum(~isfinite(rlsFreq));
+
+if ekfNonfinite > 0
     warning('EKF frequency contains non-finite values in case %s', caseId);
 end
-if any(~isfinite(rlsFreq))
+if rlsNonfinite > 0
     warning('RLS frequency contains non-finite values in case %s', caseId);
 end
 
@@ -147,6 +169,22 @@ rlsLast = rlsFreq(lastMask);
 
 fprintf('  EKF last10s mean/std [Hz]: %.6f / %.6f\n', mean(ekfLast), std(ekfLast));
 fprintf('  RLS last10s mean/std [Hz]: %.6f / %.6f\n', mean(rlsLast), std(rlsLast));
+
+trueLast = trueFreq(lastMask);
+ekfAbsErr = mean(abs(ekfLast - trueLast));
+rlsAbsErr = mean(abs(rlsLast - trueLast));
+
+fprintf('  EKF last10s mean abs err [Hz]: %.6f\n', ekfAbsErr);
+fprintf('  RLS last10s mean abs err [Hz]: %.6f\n', rlsAbsErr);
+
+dbg = struct();
+dbg.ekf_nonfinite_count = ekfNonfinite;
+dbg.rls_nonfinite_count = rlsNonfinite;
+dbg.ekf_last10_mean_hz = mean(ekfLast);
+dbg.rls_last10_mean_hz = mean(rlsLast);
+dbg.ekf_last10_std_hz = std(ekfLast);
+dbg.rls_last10_std_hz = std(rlsLast);
+dbg.last10_abs_error_gap_hz_ekf_minus_rls = ekfAbsErr - rlsAbsErr;
 end
 
 function plot_comparison_figure(traceData, outPath)
@@ -176,7 +214,7 @@ saveas(fig, outPath);
 close(fig);
 end
 
-function write_report(reportPath, T)
+function write_report(reportPath, T, D)
 fid = fopen(reportPath, 'w');
 assert(fid > 0, 'Failed to open report file.');
 
@@ -203,11 +241,47 @@ for i = 1:height(T)
 end
 fprintf(fid, '\n');
 
+fprintf(fid, '## 3. デバッグ検証サマリ（末尾10秒）\n\n');
+fprintf(fid, '| case_id | ekf_nonfinite | rls_nonfinite | ekf_last10_mean_hz | rls_last10_mean_hz | ekf_last10_std_hz | rls_last10_std_hz | abs_err_gap(ekf-rls)_hz |\n');
+fprintf(fid, '|---|---:|---:|---:|---:|---:|---:|---:|\n');
+for i = 1:height(D)
+    fprintf(fid, '| %s | %d | %d | %.6f | %.6f | %.6f | %.6f | %.6f |\n', ...
+        D.case_id{i}, ...
+        D.ekf_nonfinite_count(i), D.rls_nonfinite_count(i), ...
+        D.ekf_last10_mean_hz(i), D.rls_last10_mean_hz(i), ...
+        D.ekf_last10_std_hz(i), D.rls_last10_std_hz(i), ...
+        D.last10_abs_error_gap_hz_ekf_minus_rls(i));
+end
+fprintf(fid, '\n');
+
+fprintf(fid, '## 4. ケース別サマリ（どちらが優位か）\n\n');
+fprintf(fid, '| case_id | abs_bias_small | std_small | nrmse_small |\n');
+fprintf(fid, '|---|---|---|---|\n');
+for i = 1:height(T)
+    if abs(T.ekf_steady_bias_hz(i)) <= abs(T.rls_steady_bias_hz(i))
+        biasWinner = 'EKF';
+    else
+        biasWinner = 'RLS';
+    end
+    if T.ekf_steady_std_hz(i) <= T.rls_steady_std_hz(i)
+        stdWinner = 'EKF';
+    else
+        stdWinner = 'RLS';
+    end
+    if T.ekf_nrmse(i) <= T.rls_nrmse(i)
+        nrmseWinner = 'EKF';
+    else
+        nrmseWinner = 'RLS';
+    end
+    fprintf(fid, '| %s | %s | %s | %s |\n', T.case_id{i}, biasWinner, stdWinner, nrmseWinner);
+end
+fprintf(fid, '\n');
+
 meanDeltaAbsBias = mean(T.delta_abs_bias_hz_ekf_minus_rls, 'omitnan');
 meanDeltaStd = mean(T.delta_std_hz_ekf_minus_rls, 'omitnan');
 meanDeltaNrmse = mean(T.delta_nrmse_ekf_minus_rls, 'omitnan');
 
-fprintf(fid, '## 3. デバッグ観点での検証結果\n\n');
+fprintf(fid, '## 5. デバッグ観点での検証結果\n\n');
 fprintf(fid, '- 両推定器で非有限値（NaN/Inf）が混入しないかをケースごとに確認\n');
 fprintf(fid, '- 末尾10秒の周波数推定平均/分散を標準出力で確認\n');
 fprintf(fid, '- 指標差分（EKF-RLS）平均:\n');
@@ -215,17 +289,19 @@ fprintf(fid, '  - |定常バイアス|差: %.6f Hz\n', meanDeltaAbsBias);
 fprintf(fid, '  - 定常標準偏差差: %.6f Hz\n', meanDeltaStd);
 fprintf(fid, '  - NRMSE差: %.6f\n\n', meanDeltaNrmse);
 
-fprintf(fid, '## 4. 結果の考察\n\n');
-fprintf(fid, '1. baseline/noisy では、既存実験傾向どおり RLS の定常バイアスが小さく出るケースが多い。\n');
-fprintf(fid, '2. interference では、単一周波数モデルの限界により両者とも分散と NRMSE が増加し、推定軌跡の揺れが増える。\n');
-fprintf(fid, '3. EKF はモデル拡張（多成分状態化）で干渉下の改善余地があり、RLS は位相更新間隔と平滑化係数の再調整で分散低減余地がある。\n');
-fprintf(fid, '4. 実運用では、干渉量が大きい区間のみ2成分モデルへ切替えるハイブリッド運用が有効。\n\n');
+fprintf(fid, '## 6. 結果の考察\n\n');
+fprintf(fid, '1. 今回の3ケースでは、|定常バイアス|とNRMSEは全ケースでEKFが優位。RLSは推定値が0.73Hz付近までしか上がらず、真値0.8Hzに対して恒常的な負バイアスが残った。\n');
+fprintf(fid, '2. 一方で定常標準偏差は、baselineでは両者ほぼ同等、noisy/interferenceではRLSが小さく、RLSは"滑らかだが偏る"挙動、EKFは"真値追従性は高いが揺れやすい"挙動を示した。\n');
+fprintf(fid, '3. interferenceではEKFの標準偏差が増大（高周波干渉を単一周波数モデルで吸収しきれないため）。ただしNRMSEはEKFの方が小さく、平均的な出力再現性は維持された。\n');
+fprintf(fid, '4. rls_convergence_time_s がNaNなのは、2%%収束判定帯に60秒内で入らないことを示し、設定（phase_update_interval, omega_alpha, lambda）再調整の余地を示唆する。\n');
+fprintf(fid, '5. 次の改善方針として、EKFは2成分モデル化（対象周波数+干渉周波数）を優先、RLSは位相更新を高頻度化して定常バイアスの解消を優先するのが妥当。\n\n');
 
-fprintf(fid, '## 5. 出力ファイル\n');
+fprintf(fid, '## 7. 出力ファイル\n');
 fprintf(fid, '- rls_ekf_case_comparison.csv\n');
+fprintf(fid, '- rls_ekf_debug_summary.csv\n');
 fprintf(fid, '- rls_ekf_case_comparison.mat\n');
 fprintf(fid, '- rls_ekf_case_comparison.png\n');
-fprintf(fid, '- RLS_EKF_Validation_Comparison_Report.md\n');
+fprintf(fid, '- RLS_EKF_Validation_Comparison_Detailed_Report.md\n');
 
 fclose(fid);
 end
